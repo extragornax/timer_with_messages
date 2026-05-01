@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24h Timer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #timer {
+            font-size: 12vw;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            color: #e94560;
+            text-shadow: 0 0 30px rgba(233, 69, 96, 0.5);
+        }
+        #label {
+            font-size: 2vw;
+            color: #888;
+            margin-bottom: 2vh;
+        }
+        #message-box {
+            position: absolute;
+            bottom: 8vh;
+            text-align: center;
+            max-width: 80vw;
+            min-height: 10vh;
+        }
+        #message-text {
+            font-size: 4vw;
+            font-style: italic;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        #message-author {
+            font-size: 2vw;
+            color: #e94560;
+            margin-top: 1vh;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        .visible { opacity: 1 !important; }
+        #status {
+            position: absolute;
+            top: 2vh;
+            right: 2vw;
+            font-size: 1.2vw;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="label">Elapsed</div>
+    <div id="timer">00:00:00</div>
+    <div id="message-box">
+        <div id="message-text"></div>
+        <div id="message-author"></div>
+    </div>
+    <div id="status"></div>
+
+    <script>
+        const startTime = Date.now();
+        const DURATION = 24 * 60 * 60 * 1000;
+
+        function updateTimer() {
+            const elapsed = Date.now() - startTime;
+            const totalSeconds = Math.floor(elapsed / 1000);
+            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(totalSeconds % 60).padStart(2, '0');
+            document.getElementById('timer').textContent = `${h}:${m}:${s}`;
+
+            if (elapsed >= DURATION) {
+                document.getElementById('label').textContent = 'Finished!';
+            }
+        }
+
+        let messages = [];
+        let shownIds = new Set();
+
+        async function fetchMessages() {
+            try {
+                const res = await fetch('/api/messages');
+                messages = await res.json();
+                document.getElementById('status').textContent = `${messages.length} message(s)`;
+            } catch (e) {
+                // will retry on next interval
+            }
+        }
+
+        function showRandomMessage() {
+            if (messages.length === 0) return;
+
+            let pool = messages.filter((_, i) => !shownIds.has(i));
+            if (pool.length === 0) {
+                shownIds.clear();
+                pool = messages;
+            }
+            const idx = messages.indexOf(pool[Math.floor(Math.random() * pool.length)]);
+            shownIds.add(idx);
+            const msg = messages[idx];
+
+            const textEl = document.getElementById('message-text');
+            const authorEl = document.getElementById('message-author');
+
+            textEl.classList.remove('visible');
+            authorEl.classList.remove('visible');
+
+            setTimeout(() => {
+                textEl.textContent = `"${msg.text}"`;
+                authorEl.textContent = `— ${msg.author}`;
+                textEl.classList.add('visible');
+                authorEl.classList.add('visible');
+            }, 1000);
+
+            setTimeout(() => {
+                textEl.classList.remove('visible');
+                authorEl.classList.remove('visible');
+            }, 9000);
+        }
+
+        setInterval(updateTimer, 1000);
+        updateTimer();
+
+        setInterval(fetchMessages, 5000);
+        fetchMessages();
+
+        setInterval(showRandomMessage, 12000);
+        setTimeout(showRandomMessage, 2000);
+    </script>
+</body>
+</html>
