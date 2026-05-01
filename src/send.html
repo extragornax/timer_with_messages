@@ -4,61 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Send a Message</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #1a1a2e;
+            background: #0a0a1a;
             color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 30%, rgba(217, 90, 60, 0.06) 0%, transparent 60%);
+            pointer-events: none;
+        }
         .container {
-            background: #16213e;
-            padding: 40px;
-            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            padding: 48px 40px;
+            border-radius: 24px;
             width: 90%;
-            max-width: 500px;
+            max-width: 480px;
+            position: relative;
         }
         h1 {
             text-align: center;
-            margin-bottom: 30px;
-            color: #e94560;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 24px;
+            color: #fff;
+        }
+        .subtitle {
+            text-align: center;
+            margin-bottom: 36px;
+            font-weight: 300;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
         }
         label {
             display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            color: #aaa;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
         input, textarea {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 20px;
-            border: 1px solid #333;
-            border-radius: 8px;
-            background: #0f3460;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
             color: #eee;
+            font-family: 'Inter', sans-serif;
             font-size: 16px;
+            font-weight: 400;
+            transition: border-color 0.2s, background 0.2s;
+            outline: none;
         }
-        textarea { height: 120px; resize: vertical; }
+        input:focus, textarea:focus {
+            border-color: rgba(217, 90, 60, 0.4);
+            background: rgba(255, 255, 255, 0.06);
+        }
+        input::placeholder, textarea::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+        }
+        textarea { height: 130px; resize: vertical; }
         button {
             width: 100%;
-            padding: 14px;
-            background: #e94560;
+            padding: 16px;
+            background: #d95a3c;
             color: #fff;
             border: none;
-            border-radius: 8px;
-            font-size: 18px;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
         }
-        button:hover { background: #c73652; }
+        button:hover { background: #c44e33; }
+        button:active { transform: scale(0.98); }
         #feedback {
             text-align: center;
-            margin-top: 16px;
+            margin-top: 20px;
             font-size: 14px;
+            font-weight: 500;
             color: #4ecca3;
             min-height: 20px;
         }
@@ -67,7 +108,12 @@
 <body>
     <div class="container">
         <h1>Send a Message</h1>
+        <p class="subtitle">Your message will appear on the big screen</p>
         <form id="form">
+            <label for="runner_name">Runner's first name</label>
+            <input type="text" id="runner_name" name="runner_name" required placeholder="e.g. Marie">
+            <label for="bib">Bib number</label>
+            <input type="text" id="bib" name="bib" required placeholder="e.g. 42">
             <label for="author">Your name</label>
             <input type="text" id="author" name="author" required placeholder="e.g. The Family">
             <label for="text">Your message</label>
@@ -83,15 +129,17 @@
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const runner_name = document.getElementById('runner_name').value.trim();
+            const bib = document.getElementById('bib').value.trim();
             const author = document.getElementById('author').value.trim();
             const text = document.getElementById('text').value.trim();
-            if (!author || !text) return;
+            if (!runner_name || !bib || !author || !text) return;
 
             try {
                 const res = await fetch('/api/messages', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ author, text }),
+                    body: JSON.stringify({ author, text, bib, runner_name }),
                 });
                 if (res.ok) {
                     feedback.textContent = 'Message sent!';

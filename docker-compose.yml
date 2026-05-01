@@ -1,0 +1,8 @@
+services:
+  timer:
+    build: .
+    ports:
+      - "9018:3000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

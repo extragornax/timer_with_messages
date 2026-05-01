@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>24h Timer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;500&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: #1a1a2e;
+            background: #0a0a1a;
             color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', sans-serif;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -17,73 +21,235 @@
             justify-content: center;
             overflow: hidden;
         }
-        #timer {
-            font-size: 12vw;
-            font-weight: bold;
-            font-variant-numeric: tabular-nums;
-            color: #e94560;
-            text-shadow: 0 0 30px rgba(233, 69, 96, 0.5);
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 50% 0%, rgba(217, 90, 60, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 50% 100%, rgba(78, 204, 163, 0.06) 0%, transparent 50%);
+            pointer-events: none;
         }
+
         #label {
-            font-size: 2vw;
-            color: #888;
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            font-size: 3vw;
+            text-transform: uppercase;
+            letter-spacing: 1.5vw;
+            color: rgba(217, 90, 60, 0.5);
             margin-bottom: 2vh;
+            animation: breathe 4s ease-in-out infinite;
         }
+
+        #timer {
+            font-family: 'Orbitron', monospace;
+            font-size: 17vw;
+            font-weight: 900;
+            font-variant-numeric: tabular-nums;
+            color: #fff;
+            animation: glow 3s ease-in-out infinite;
+            line-height: 1;
+            max-width: 96vw;
+            width: fit-content;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        #timer .days {
+            font-size: 8vw;
+            color: rgba(217, 90, 60, 0.7);
+            vertical-align: baseline;
+            margin-right: 1vw;
+        }
+
+        #timer .colon {
+            color: rgba(217, 90, 60, 0.6);
+            animation: blink 2s step-end infinite;
+        }
+
+        .separator {
+            width: 40vw;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(217, 90, 60, 0.3), transparent);
+            margin: 3vh 0;
+        }
+
         #message-box {
-            position: absolute;
-            bottom: 8vh;
             text-align: center;
-            max-width: 80vw;
-            min-height: 10vh;
+            max-width: 85vw;
+            min-height: 12vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
+
+        #message-target {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 2.5vw;
+            color: rgba(217, 90, 60, 0.6);
+            margin-bottom: 1vh;
+            opacity: 0;
+            transform: translateY(15px);
+            transition: opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
+                        transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.3vw;
+        }
+
         #message-text {
-            font-size: 4vw;
-            font-style: italic;
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            font-size: 5.5vw;
             color: #fff;
             opacity: 0;
-            transition: opacity 1s ease-in-out;
+            transform: translateY(20px) scale(0.97);
+            transition: opacity 1.4s cubic-bezier(0.22, 1, 0.36, 1),
+                        transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+            line-height: 1.3;
         }
+
         #message-author {
-            font-size: 2vw;
-            color: #e94560;
-            margin-top: 1vh;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 2.5vw;
+            color: rgba(217, 90, 60, 0.8);
+            margin-top: 1.5vh;
             opacity: 0;
-            transition: opacity 1s ease-in-out;
+            transform: translateY(15px);
+            transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s,
+                        transform 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
         }
-        .visible { opacity: 1 !important; }
+
+        .visible {
+            opacity: 1 !important;
+            transform: translateY(0) scale(1) !important;
+        }
+
         #status {
             position: absolute;
             top: 2vh;
             right: 2vw;
-            font-size: 1.2vw;
-            color: #555;
+            font-size: 1vw;
+            color: rgba(255, 255, 255, 0.15);
+            font-weight: 300;
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                text-shadow:
+                    0 0 60px rgba(217, 90, 60, 0.4),
+                    0 0 120px rgba(217, 90, 60, 0.15);
+            }
+            50% {
+                text-shadow:
+                    0 0 80px rgba(217, 90, 60, 0.6),
+                    0 0 160px rgba(217, 90, 60, 0.25);
+            }
+        }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0.3; }
+        }
+
+        @keyframes glow-elapsed {
+            0%, 100% {
+                text-shadow:
+                    0 0 60px rgba(78, 204, 163, 0.4),
+                    0 0 120px rgba(78, 204, 163, 0.15);
+            }
+            50% {
+                text-shadow:
+                    0 0 80px rgba(78, 204, 163, 0.6),
+                    0 0 160px rgba(78, 204, 163, 0.25);
+            }
+        }
+
+        .elapsed #timer {
+            color: #4ecca3;
+            animation: glow-elapsed 3s ease-in-out infinite;
+        }
+        .elapsed #label {
+            color: rgba(78, 204, 163, 0.5);
+        }
+        .elapsed .separator {
+            background: linear-gradient(90deg, transparent, rgba(78, 204, 163, 0.3), transparent);
+        }
+        .elapsed #message-author {
+            color: rgba(78, 204, 163, 0.8);
+        }
+        .elapsed #timer .colon {
+            color: rgba(78, 204, 163, 0.6);
         }
     </style>
 </head>
 <body>
-    <div id="label">Elapsed</div>
+    <div id="label">Countdown</div>
     <div id="timer">00:00:00</div>
+    <div class="separator"></div>
     <div id="message-box">
+        <div id="message-target"></div>
         <div id="message-text"></div>
         <div id="message-author"></div>
     </div>
     <div id="status"></div>
 
     <script>
-        const startTime = Date.now();
-        const DURATION = 24 * 60 * 60 * 1000;
+        // July 25, 2026 14:00 CEST (UTC+2)
+        const TARGET = new Date('2026-07-25T12:00:00Z').getTime();
 
-        function updateTimer() {
-            const elapsed = Date.now() - startTime;
-            const totalSeconds = Math.floor(elapsed / 1000);
+        function formatTime(totalSeconds, showDays) {
+            if (showDays) {
+                const d = Math.floor(totalSeconds / 86400);
+                const h = String(Math.floor((totalSeconds % 86400) / 3600)).padStart(2, '0');
+                const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                const s = String(totalSeconds % 60).padStart(2, '0');
+                if (d > 0) {
+                    return `<span class="days">${d}d</span>${h}<span class="colon">:</span>${m}<span class="colon">:</span>${s}`;
+                }
+                return `${h}<span class="colon">:</span>${m}<span class="colon">:</span>${s}`;
+            }
             const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
             const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
             const s = String(totalSeconds % 60).padStart(2, '0');
-            document.getElementById('timer').textContent = `${h}:${m}:${s}`;
+            return `${h}<span class="colon">:</span>${m}<span class="colon">:</span>${s}`;
+        }
 
-            if (elapsed >= DURATION) {
-                document.getElementById('label').textContent = 'Finished!';
+        function fitTimer() {
+            const el = document.getElementById('timer');
+            let size = 17;
+            el.style.fontSize = size + 'vw';
+            while (el.scrollWidth > window.innerWidth * 0.96 && size > 5) {
+                size -= 0.5;
+                el.style.fontSize = size + 'vw';
             }
+        }
+
+        function updateTimer() {
+            const now = Date.now();
+            const diff = TARGET - now;
+
+            if (diff > 0) {
+                document.body.classList.remove('elapsed');
+                document.getElementById('label').textContent = 'Countdown';
+                const totalSeconds = Math.floor(diff / 1000);
+                document.getElementById('timer').innerHTML = formatTime(totalSeconds, true);
+            } else {
+                document.body.classList.add('elapsed');
+                document.getElementById('label').textContent = 'Elapsed';
+                const totalSeconds = Math.floor((-diff) / 1000);
+                document.getElementById('timer').innerHTML = formatTime(totalSeconds, false);
+            }
+            fitTimer();
         }
 
         let messages = [];
@@ -111,20 +277,25 @@
             shownIds.add(idx);
             const msg = messages[idx];
 
+            const targetEl = document.getElementById('message-target');
             const textEl = document.getElementById('message-text');
             const authorEl = document.getElementById('message-author');
 
+            targetEl.classList.remove('visible');
             textEl.classList.remove('visible');
             authorEl.classList.remove('visible');
 
             setTimeout(() => {
-                textEl.textContent = `"${msg.text}"`;
+                targetEl.textContent = `#${msg.bib} ${msg.runner_name}`;
+                textEl.textContent = `”${msg.text}”`;
                 authorEl.textContent = `— ${msg.author}`;
+                targetEl.classList.add('visible');
                 textEl.classList.add('visible');
                 authorEl.classList.add('visible');
-            }, 1000);
+            }, 1200);
 
             setTimeout(() => {
+                targetEl.classList.remove('visible');
                 textEl.classList.remove('visible');
                 authorEl.classList.remove('visible');
             }, 9000);
