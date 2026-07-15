@@ -138,6 +138,67 @@
             font-weight: 300;
         }
 
+        #style-select {
+            position: absolute;
+            top: 2vh;
+            left: 2vw;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 0.5vh 0.8vw;
+            font-family: 'Inter', sans-serif;
+            font-size: 1vw;
+            cursor: pointer;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+        #style-select:hover { opacity: 1; }
+        #style-select option { background: #0a0a1a; color: #eee; }
+
+        /* --- Minimal style --- */
+        body.style-minimal #timer {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            animation: none;
+            text-shadow: none;
+        }
+        body.style-minimal #timer .colon { animation: none; }
+
+        /* --- LCD style --- */
+        body.style-lcd { background: #0d1410; }
+        body.style-lcd #timer {
+            font-family: 'Orbitron', monospace;
+            color: #7dff9b;
+            animation: none;
+            text-shadow: 0 0 10px rgba(125, 255, 155, 0.7), 0 0 30px rgba(125, 255, 155, 0.3);
+        }
+        body.style-lcd #timer .colon { color: #7dff9b; }
+        body.style-lcd #label { color: rgba(125, 255, 155, 0.5); }
+
+        /* --- Retro style --- */
+        body.style-retro #timer {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            font-style: italic;
+            color: #f5d76e;
+            animation: none;
+            text-shadow: 3px 3px 0 rgba(217, 90, 60, 0.6);
+        }
+        body.style-retro #timer .colon { color: #d95a3c; animation: none; }
+        body.style-retro #label { color: rgba(245, 215, 110, 0.6); }
+
+        /* --- Red on black style --- */
+        body.style-red { background: #000; }
+        body.style-red #timer {
+            font-family: 'Orbitron', monospace;
+            color: #ff0000;
+            animation: none;
+            text-shadow: none;
+        }
+        body.style-red #timer .colon { color: #ff0000; animation: none; }
+        body.style-red #label { color: rgba(255, 0, 0, 0.6); }
+
         @keyframes glow {
             0%, 100% {
                 text-shadow:
@@ -202,10 +263,32 @@
         <div id="message-author"></div>
     </div>
     <div id="status"></div>
+    <select id="style-select">
+        <option value="neon">Neon</option>
+        <option value="minimal">Minimal</option>
+        <option value="lcd">LCD</option>
+        <option value="retro">Retro</option>
+        <option value="red">Red on Black</option>
+    </select>
 
     <script>
-        // July 25, 2026 14:00 CEST (UTC+2)
-        const TARGET = new Date('2026-07-25T12:00:00Z').getTime();
+        const STYLES = ['minimal', 'lcd', 'retro', 'red'];
+        function applyStyle(style) {
+            STYLES.forEach(s => document.body.classList.remove('style-' + s));
+            if (style !== 'neon') document.body.classList.add('style-' + style);
+        }
+        const styleSelect = document.getElementById('style-select');
+        const savedStyle = localStorage.getItem('clockStyle') || 'neon';
+        styleSelect.value = savedStyle;
+        applyStyle(savedStyle);
+        styleSelect.addEventListener('change', () => {
+            localStorage.setItem('clockStyle', styleSelect.value);
+            applyStyle(styleSelect.value);
+        });
+    </script>
+
+    <script>
+        const TARGET = new Date('{{TARGET_DATE}}').getTime();
 
         function formatTime(totalSeconds, showDays) {
             if (showDays) {
