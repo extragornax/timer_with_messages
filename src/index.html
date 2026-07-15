@@ -199,6 +199,24 @@
         body.style-red #timer .colon { color: #ff0000; animation: none; }
         body.style-red #label { color: rgba(255, 0, 0, 0.6); }
 
+        /* --- LED dot-matrix style --- */
+        #clock { display: none; }
+        body.style-matrix { background: #000; }
+        body.style-matrix #timer { display: none; }
+        body.style-matrix #clock {
+            display: block;
+            width: 82vw;
+            max-height: 60vh;
+            height: auto;
+            overflow: visible;
+        }
+        body.style-matrix #label { color: rgba(255, 34, 0, 0.5); }
+        #clock .on {
+            fill: #ff2200;
+            filter: drop-shadow(0 0 3px #ff2200) drop-shadow(0 0 8px #ff0000);
+        }
+        #clock .off { fill: #1c0503; }
+
         @keyframes glow {
             0%, 100% {
                 text-shadow:
@@ -256,6 +274,7 @@
 <body>
     <div id="label">Countdown</div>
     <div id="timer">00:00:00</div>
+    <svg id="clock" xmlns="http://www.w3.org/2000/svg"></svg>
     <div class="separator"></div>
     <div id="message-box">
         <div id="message-target"></div>
@@ -269,10 +288,11 @@
         <option value="lcd">LCD</option>
         <option value="retro">Retro</option>
         <option value="red">Red on Black</option>
+        <option value="matrix">LED Matrix</option>
     </select>
 
     <script>
-        const STYLES = ['minimal', 'lcd', 'retro', 'red'];
+        const STYLES = ['minimal', 'lcd', 'retro', 'red', 'matrix'];
         function applyStyle(style) {
             STYLES.forEach(s => document.body.classList.remove('style-' + s));
             if (style !== 'neon') document.body.classList.add('style-' + style);
@@ -284,6 +304,7 @@
         styleSelect.addEventListener('change', () => {
             localStorage.setItem('clockStyle', styleSelect.value);
             applyStyle(styleSelect.value);
+            if (typeof updateTimer === 'function') updateTimer();
         });
     </script>
 
@@ -312,6 +333,78 @@
             return `${h}<span class="colon">:</span>${m}<span class="colon">:</span>${s}`;
         }
 
+        /* --- LED dot-matrix renderer (5x7 dots per digit) --- */
+        const MATRIX_FONT = {
+            '0': ["01110","10001","10011","10101","11001","10001","01110"],
+            '1': ["00100","01100","00100","00100","00100","00100","01110"],
+            '2': ["01110","10001","00001","00010","00100","01000","11111"],
+            '3': ["11111","00010","00100","00010","00001","10001","01110"],
+            '4': ["00010","00110","01010","10010","11111","00010","00010"],
+            '5': ["11111","10000","11110","00001","00001","10001","01110"],
+            '6': ["00110","01000","10000","11110","10001","10001","01110"],
+            '7': ["11111","00001","00010","00100","01000","01000","01000"],
+            '8': ["01110","10001","10001","01110","10001","10001","01110"],
+            '9': ["01110","10001","10001","01111","00001","00010","01100"],
+        };
+        const MATRIX_COLON = ["00000","01100","01100","00000","01100","01100","00000"];
+        const M_R = 5, M_GAP = 14, M_CW = 5, M_CH = 7,
+              M_CGAP = M_GAP * 1.6, M_GGAP = M_GAP * 0.6, M_PAD = 14;
+        const clockSvg = document.getElementById('clock');
+        let matrixSlots = [];
+
+        function buildMatrix(chars) {
+            clockSvg.innerHTML = '';
+            const slots = [];
+            let cursorX = 0;
+            chars.forEach(ch => {
+                slots.push({ ch, x: cursorX });
+                cursorX += (M_CW - 1) * M_GAP + M_CGAP + (ch === ':' ? M_GGAP : 0);
+            });
+            const totalW = cursorX - M_CGAP + M_R * 2;
+            const totalH = (M_CH - 1) * M_GAP + M_R * 2;
+            clockSvg.setAttribute('viewBox',
+                `${-M_R - M_PAD} ${-M_R - M_PAD} ${totalW + M_PAD * 2} ${totalH + M_PAD * 2}`);
+            clockSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            slots.forEach(slot => {
+                slot.leds = [];
+                for (let r = 0; r < M_CH; r++) {
+                    slot.leds[r] = [];
+                    for (let c = 0; c < M_CW; c++) {
+                        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        dot.setAttribute('cx', slot.x + c * M_GAP);
+                        dot.setAttribute('cy', r * M_GAP);
+                        dot.setAttribute('r', M_R);
+                        dot.setAttribute('class', 'off');
+                        clockSvg.appendChild(dot);
+                        slot.leds[r][c] = dot;
+                    }
+                }
+            });
+            return slots;
+        }
+
+        let matrixLen = -1;
+        function renderMatrix(str) {
+            if (str.length !== matrixLen) {
+                matrixSlots = buildMatrix(str.split(''));
+                matrixLen = str.length;
+            }
+            str.split('').forEach((ch, i) => {
+                const pat = ch === ':' ? MATRIX_COLON : MATRIX_FONT[ch];
+                const slot = matrixSlots[i];
+                for (let r = 0; r < M_CH; r++)
+                    for (let c = 0; c < M_CW; c++)
+                        slot.leds[r][c].setAttribute('class', pat[r][c] === '1' ? 'on' : 'off');
+            });
+        }
+
+        function matrixString(totalSeconds) {
+            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(totalSeconds % 60).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
         function fitTimer() {
             const el = document.getElementById('timer');
             let size = 17;
@@ -326,18 +419,25 @@
             const now = Date.now();
             const diff = TARGET - now;
 
+            let totalSeconds, showDays;
             if (diff > 0) {
                 document.body.classList.remove('elapsed');
                 document.getElementById('label').textContent = 'Countdown';
-                const totalSeconds = Math.floor(diff / 1000);
-                document.getElementById('timer').innerHTML = formatTime(totalSeconds, true);
+                totalSeconds = Math.floor(diff / 1000);
+                showDays = true;
             } else {
                 document.body.classList.add('elapsed');
                 document.getElementById('label').textContent = 'Elapsed';
-                const totalSeconds = Math.floor((-diff) / 1000);
-                document.getElementById('timer').innerHTML = formatTime(totalSeconds, false);
+                totalSeconds = Math.floor((-diff) / 1000);
+                showDays = false;
             }
-            fitTimer();
+
+            if (document.body.classList.contains('style-matrix')) {
+                renderMatrix(matrixString(totalSeconds));
+            } else {
+                document.getElementById('timer').innerHTML = formatTime(totalSeconds, showDays);
+                fitTimer();
+            }
         }
 
         let messages = [];
