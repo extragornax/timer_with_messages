@@ -10,6 +10,7 @@ families and friends so the runner can see them on screen.
 - Rotating on-screen messages fetched from the server, targeted by runner
   bib number and name.
 - A `/send` web form and a JSON API to add messages.
+- A token-protected `/admin` page to list and delete messages.
 - Selectable clock styles, shareable via URL.
 - SQLite persistence and a Docker setup.
 
@@ -23,14 +24,27 @@ Then open:
 
 - http://localhost:3000 — the timer display
 - http://localhost:3000/send — form to add a message
+- http://localhost:3000/admin — admin page (list and delete messages)
 
-The target date is read from the `TARGET_DATE` environment variable
-(RFC 3339, e.g. `2026-07-25T12:00:00Z`). It defaults to `2026-07-25T12:00:00Z`
-if unset.
+## Configuration
+
+Configuration comes from environment variables, loaded from a `.env` file if
+present. Copy `.env.example` to `.env` and adjust:
+
+| Variable      | Description                                                        |
+|---------------|--------------------------------------------------------------------|
+| `TARGET_DATE` | Timer start (RFC 3339). Defaults to `2026-07-25T12:00:00Z`.        |
+| `ADMIN_TOKEN` | Secret for the `/admin` page. If unset/empty, deletion is disabled.|
 
 ```bash
-TARGET_DATE=2026-07-25T14:00:00Z cargo run
+cp .env.example .env
+# edit .env, then:
+cargo run
 ```
+
+The `/admin` page prompts for the `ADMIN_TOKEN`; it lists all messages and lets
+you delete them. Deletion goes through `DELETE /api/messages/{id}` with an
+`Authorization: Bearer <ADMIN_TOKEN>` header (see [API.md](API.md)).
 
 ### Docker
 

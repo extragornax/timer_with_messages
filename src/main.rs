@@ -1,11 +1,12 @@
+use std::env;
 use std::sync::{Arc, Mutex};
 
 use axum::{
     Json, Router,
-    extract::State,
-    http::header,
+    extract::{Path, State},
+    http::{HeaderMap, StatusCode, header},
     response::{Html, IntoResponse},
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
 use rusqlite::Connection;
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize)]
 struct Message {
+    id: i64,
     author: String,
     text: String,
     bib: String,
@@ -46,6 +48,8 @@ fn init_db(conn: &Connection) {
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
+
     let conn = Connection::open("messages.db").unwrap();
     init_db(&conn);
     let db: Db = Arc::new(Mutex::new(conn));
@@ -53,8 +57,10 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/send", get(send_page))
+        .route("/admin", get(admin_page))
         .route("/api/messages", get(get_messages))
         .route("/api/messages", post(post_message))
+        .route("/api/messages/{id}", delete(delete_message))
         .with_state(db);
 
     let addr = "0.0.0.0:3000";
@@ -65,8 +71,10 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn index() -> Html<&'static str> {
-    Html(include_str!("index.html"))
+async fn index() -> Html<String> {
+    let target = env::var("TARGET_DATE").unwrap_or_else(|_| "2026-07-25T12:00:00Z".to_string());
+    let html = include_str!("index.html").replace("{{TARGET_DATE}}", &target);
+    Html(html)
 }
 
 async fn send_page() -> impl IntoResponse {
@@ -79,16 +87,17 @@ async fn send_page() -> impl IntoResponse {
 async fn get_messages(State(db): State<Db>) -> Json<Vec<Message>> {
     let conn = db.lock().unwrap();
     let mut stmt = conn
-        .prepare("SELECT author, text, bib, runner_name, created_at FROM messages ORDER BY id")
+        .prepare("SELECT id, author, text, bib, runner_name, created_at FROM messages ORDER BY id")
         .unwrap();
     let messages = stmt
         .query_map([], |row| {
-            let created_at_str: String = row.get(4)?;
+            let created_at_str: String = row.get(5)?;
             Ok(Message {
-                author: row.get(0)?,
-                text: row.get(1)?,
-                bib: row.get(2)?,
-                runner_name: row.get(3)?,
+                id: row.get(0)?,
+                author: row.get(1)?,
+                text: row.get(2)?,
+                bib: row.get(3)?,
+                runner_name: row.get(4)?,
                 created_at: created_at_str.parse::<DateTime<Utc>>().unwrap(),
             })
         })
@@ -107,10 +116,82 @@ async fn post_message(State(db): State<Db>, Json(payload): Json<NewMessage>) -> 
     )
     .unwrap();
     Json(Message {
+        id: conn.last_insert_rowid(),
         author: payload.author,
         text: payload.text,
         bib: payload.bib,
         runner_name: payload.runner_name,
         created_at: now,
     })
+}
+
+/// Returns true only when `ADMIN_TOKEN` is set, non-empty, and the request
+/// carries a matching `Authorization: Bearer <token>` header.
+fn check_auth(headers: &HeaderMap) -> bool {
+    let token = match env::var("ADMIN_TOKEN") {
+        Ok(t) if !t.is_empty() => t,
+        _ => return false,
+    };
+    headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .map(|v| v == token)
+        .unwrap_or(false)
+}
+
+async fn admin_page() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        include_str!("admin.html"),
+    )
+}
+
+async fn delete_message(
+    State(db): State<Db>,
+    Path(id): Path<i64>,
+    headers: HeaderMap,
+) -> StatusCode {
+    if !check_auth(&headers) {
+        return StatusCode::UNAUTHORIZED;
+    }
+    let conn = db.lock().unwrap();
+    let affected = conn
+        .execute("DELETE FROM messages WHERE id = ?1", [id])
+        .unwrap();
+    if affected == 0 {
+        StatusCode::NOT_FOUND
+    } else {
+        StatusCode::NO_CONTENT
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderValue;
+
+    fn with_auth(value: &str) -> HeaderMap {
+        let mut h = HeaderMap::new();
+        h.insert(header::AUTHORIZATION, HeaderValue::from_str(value).unwrap());
+        h
+    }
+
+    #[test]
+    fn check_auth_gate() {
+        // No token configured => always deny, even with a bearer header.
+        unsafe { env::remove_var("ADMIN_TOKEN") };
+        assert!(!check_auth(&with_auth("Bearer anything")));
+
+        // Empty token => deny.
+        unsafe { env::set_var("ADMIN_TOKEN", "") };
+        assert!(!check_auth(&with_auth("Bearer ")));
+
+        // Configured token: only an exact matching bearer is accepted.
+        unsafe { env::set_var("ADMIN_TOKEN", "s3cret") };
+        assert!(check_auth(&with_auth("Bearer s3cret")));
+        assert!(!check_auth(&with_auth("Bearer wrong")));
+        assert!(!check_auth(&with_auth("s3cret"))); // missing "Bearer " prefix
+        assert!(!check_auth(&HeaderMap::new())); // no header at all
+    }
 }
