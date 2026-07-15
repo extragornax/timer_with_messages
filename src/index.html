@@ -288,7 +288,12 @@
     </script>
 
     <script>
-        const TARGET = new Date('{{TARGET_DATE}}').getTime();
+        const RAW_TARGET = '{{TARGET_DATE}}';
+        let TARGET = new Date(RAW_TARGET).getTime();
+        if (isNaN(TARGET)) {
+            // Placeholder not substituted (e.g. file opened directly) or bad env.
+            TARGET = new Date('2026-07-25T12:00:00Z').getTime();
+        }
 
         function formatTime(totalSeconds, showDays) {
             if (showDays) {
