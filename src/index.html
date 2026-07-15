@@ -32,6 +32,27 @@
             pointer-events: none;
         }
 
+        /* Clock always centered on screen, independent of messages. */
+        #clock-layer {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        /* Messages sit in the lower part, below the centered clock. */
+        #message-layer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 5vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         #timer {
             font-family: 'League Gothic', 'Orbitron', sans-serif;
             font-size: 17vw;
@@ -249,13 +270,17 @@
     </style>
 </head>
 <body>
-    <div id="timer">00:00:00</div>
-    <svg id="clock" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div class="separator"></div>
-    <div id="message-box">
-        <div id="message-target"></div>
-        <div id="message-text"></div>
-        <div id="message-author"></div>
+    <div id="clock-layer">
+        <div id="timer">00:00:00</div>
+        <svg id="clock" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="message-layer">
+        <div class="separator"></div>
+        <div id="message-box">
+            <div id="message-target"></div>
+            <div id="message-text"></div>
+            <div id="message-author"></div>
+        </div>
     </div>
     <div id="status"></div>
     <select id="style-select">
@@ -475,7 +500,7 @@
         setInterval(fetchMessages, 5000);
         fetchMessages();
 
-        setInterval(showRandomMessage, 12000);
+        setInterval(showRandomMessage, 30000);
         setTimeout(showRandomMessage, 2000);
     </script>
 </body>
