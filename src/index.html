@@ -298,12 +298,21 @@
             if (style !== 'neon') document.body.classList.add('style-' + style);
         }
         const styleSelect = document.getElementById('style-select');
-        const savedStyle = localStorage.getItem('clockStyle') || 'neon';
-        styleSelect.value = savedStyle;
-        applyStyle(savedStyle);
+        const validStyles = ['neon', ...STYLES];
+        // Precedence: ?style=... in URL, then saved choice, then default.
+        const urlStyle = new URLSearchParams(location.search).get('style');
+        const initialStyle = (urlStyle && validStyles.includes(urlStyle))
+            ? urlStyle
+            : (localStorage.getItem('clockStyle') || 'neon');
+        styleSelect.value = initialStyle;
+        applyStyle(initialStyle);
         styleSelect.addEventListener('change', () => {
-            localStorage.setItem('clockStyle', styleSelect.value);
-            applyStyle(styleSelect.value);
+            const v = styleSelect.value;
+            localStorage.setItem('clockStyle', v);
+            const params = new URLSearchParams(location.search);
+            params.set('style', v);
+            history.replaceState(null, '', location.pathname + '?' + params.toString());
+            applyStyle(v);
             if (typeof updateTimer === 'function') updateTimer();
         });
     </script>
