@@ -6,7 +6,7 @@
     <title>24h Timer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;500&family=League+Gothic&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -32,19 +32,8 @@
             pointer-events: none;
         }
 
-        #label {
-            font-family: 'Inter', sans-serif;
-            font-weight: 300;
-            font-size: 3vw;
-            text-transform: uppercase;
-            letter-spacing: 1.5vw;
-            color: rgba(217, 90, 60, 0.5);
-            margin-bottom: 2vh;
-            animation: breathe 4s ease-in-out infinite;
-        }
-
         #timer {
-            font-family: 'Orbitron', monospace;
+            font-family: 'League Gothic', 'Orbitron', sans-serif;
             font-size: 17vw;
             font-weight: 900;
             font-variant-numeric: tabular-nums;
@@ -87,9 +76,9 @@
         }
 
         #message-target {
-            font-family: 'Orbitron', monospace;
-            font-weight: 700;
-            font-size: 2.5vw;
+            font-family: 'League Gothic', sans-serif;
+            font-weight: 400;
+            font-size: 3vw;
             color: rgba(217, 90, 60, 0.6);
             margin-bottom: 1vh;
             opacity: 0;
@@ -174,7 +163,6 @@
             text-shadow: 0 0 10px rgba(125, 255, 155, 0.7), 0 0 30px rgba(125, 255, 155, 0.3);
         }
         body.style-lcd #timer .colon { color: #7dff9b; }
-        body.style-lcd #label { color: rgba(125, 255, 155, 0.5); }
 
         /* --- Retro style --- */
         body.style-retro #timer {
@@ -186,7 +174,6 @@
             text-shadow: 3px 3px 0 rgba(217, 90, 60, 0.6);
         }
         body.style-retro #timer .colon { color: #d95a3c; animation: none; }
-        body.style-retro #label { color: rgba(245, 215, 110, 0.6); }
 
         /* --- Red on black style --- */
         body.style-red { background: #000; }
@@ -197,7 +184,6 @@
             text-shadow: none;
         }
         body.style-red #timer .colon { color: #ff0000; animation: none; }
-        body.style-red #label { color: rgba(255, 0, 0, 0.6); }
 
         /* --- LED dot-matrix style --- */
         #clock { display: none; }
@@ -210,7 +196,6 @@
             height: auto;
             overflow: visible;
         }
-        body.style-matrix #label { color: rgba(255, 34, 0, 0.5); }
         #clock .on {
             fill: #ff2200;
             filter: drop-shadow(0 0 3px #ff2200) drop-shadow(0 0 8px #ff0000);
@@ -228,11 +213,6 @@
                     0 0 80px rgba(217, 90, 60, 0.6),
                     0 0 160px rgba(217, 90, 60, 0.25);
             }
-        }
-
-        @keyframes breathe {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 0.8; }
         }
 
         @keyframes blink {
@@ -257,9 +237,6 @@
             color: #4ecca3;
             animation: glow-elapsed 3s ease-in-out infinite;
         }
-        .elapsed #label {
-            color: rgba(78, 204, 163, 0.5);
-        }
         .elapsed .separator {
             background: linear-gradient(90deg, transparent, rgba(78, 204, 163, 0.3), transparent);
         }
@@ -272,7 +249,6 @@
     </style>
 </head>
 <body>
-    <div id="label">Countdown</div>
     <div id="timer">00:00:00</div>
     <svg id="clock" xmlns="http://www.w3.org/2000/svg"></svg>
     <div class="separator"></div>
@@ -431,12 +407,10 @@
             let totalSeconds, showDays;
             if (diff > 0) {
                 document.body.classList.remove('elapsed');
-                document.getElementById('label').textContent = 'Countdown';
                 totalSeconds = Math.floor(diff / 1000);
                 showDays = true;
             } else {
                 document.body.classList.add('elapsed');
-                document.getElementById('label').textContent = 'Elapsed';
                 totalSeconds = Math.floor((-diff) / 1000);
                 showDays = false;
             }
@@ -482,6 +456,9 @@
             textEl.classList.remove('visible');
             authorEl.classList.remove('visible');
 
+            // Fade the current message out, then bring the next one in.
+            // Messages never expire on their own: one stays until the next
+            // rotates in, so the display is never blank.
             setTimeout(() => {
                 targetEl.textContent = `#${msg.bib} ${msg.runner_name}`;
                 textEl.textContent = `”${msg.text}”`;
@@ -490,12 +467,6 @@
                 textEl.classList.add('visible');
                 authorEl.classList.add('visible');
             }, 1200);
-
-            setTimeout(() => {
-                targetEl.classList.remove('visible');
-                textEl.classList.remove('visible');
-                authorEl.classList.remove('visible');
-            }, 9000);
         }
 
         setInterval(updateTimer, 1000);
