@@ -5,4 +5,7 @@ services:
       - "9018:3000"
     volumes:
       - ./data:/data
+    environment:
+      - TARGET_DATE=${TARGET_DATE:-2026-07-25T12:00:00Z}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
     restart: unless-stopped
