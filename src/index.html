@@ -89,13 +89,13 @@
 
         #timer {
             font-family: 'League Gothic', 'Orbitron', sans-serif;
-            font-size: 17vw;
+            font-size: 22vw;
             font-weight: 900;
             font-variant-numeric: tabular-nums;
             color: #fff;
             animation: glow 3s ease-in-out infinite;
             line-height: 1;
-            max-width: 96vw;
+            max-width: 99vw;
             width: fit-content;
             white-space: nowrap;
             overflow: hidden;
@@ -115,7 +115,7 @@
 
         #message-box {
             text-align: center;
-            max-width: 85vw;
+            max-width: 92vw;
             min-height: 12vh;
             display: flex;
             flex-direction: column;
@@ -239,7 +239,7 @@
         body.style-matrix #timer { display: none; }
         body.style-matrix #clock {
             display: block;
-            width: 82vw;
+            width: 94vw;
             max-height: 60vh;
             height: auto;
             overflow: visible;
@@ -447,9 +447,9 @@
 
         function fitTimer() {
             const el = document.getElementById('timer');
-            let size = 17;
+            let size = 22;
             el.style.fontSize = size + 'vw';
-            while (el.scrollWidth > window.innerWidth * 0.96 && size > 5) {
+            while (el.scrollWidth > window.innerWidth * 0.99 && size > 5) {
                 size -= 0.5;
                 el.style.fontSize = size + 'vw';
             }
