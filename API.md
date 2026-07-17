@@ -84,5 +84,7 @@ curl -X DELETE http://localhost:3000/api/messages/1 \
 
 ## Pages
 
+- `GET /` — timer display.
+- `GET /simulate` — same display with a date field that overrides the target date (client-side preview only).
 - `GET /send` — browser form to add a message.
 - `GET /admin` — admin page: log in with `ADMIN_TOKEN` to list and delete messages.

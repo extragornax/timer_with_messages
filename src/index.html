@@ -53,6 +53,40 @@
             align-items: center;
         }
 
+        /* Simulate-mode date field (shown only on /simulate). */
+        #sim-controls {
+            position: fixed;
+            top: 2vh;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 10px;
+            align-items: center;
+            z-index: 5;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        #sim-controls.on { display: flex; }
+        #sim-controls label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        #sim-controls input {
+            background: rgba(255, 255, 255, 0.06);
+            color: #eee;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            padding: 5px 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color-scheme: dark;
+            outline: none;
+        }
+
         #timer {
             font-family: 'League Gothic', 'Orbitron', sans-serif;
             font-size: 17vw;
@@ -280,6 +314,10 @@
         <option value="red">Red on Black</option>
         <option value="matrix">LED Matrix</option>
     </select>
+    <div id="sim-controls">
+        <label for="sim-date">Simulated date</label>
+        <input type="datetime-local" id="sim-date" step="1">
+    </div>
 
     <script>
         const STYLES = ['minimal', 'lcd', 'retro', 'red', 'matrix'];
@@ -314,6 +352,9 @@
             // Placeholder not substituted (e.g. file opened directly) or bad env.
             TARGET = new Date('2026-07-25T12:00:00Z').getTime();
         }
+
+        // On /simulate this is true: show a date field that overrides TARGET.
+        const SIMULATE = ('{{SIMULATE}}' === 'true');
 
         function formatTime(totalSeconds, showDays) {
             if (showDays) {
@@ -481,6 +522,24 @@
                 textEl.classList.add('visible');
                 authorEl.classList.add('visible');
             }, 1200);
+        }
+
+        // Simulate mode: reveal the date field and let it override TARGET.
+        if (SIMULATE) {
+            const simCtl = document.getElementById('sim-controls');
+            const simDate = document.getElementById('sim-date');
+            simCtl.classList.add('on');
+            const pad = n => String(n).padStart(2, '0');
+            const d = new Date(TARGET);
+            simDate.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+                + `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            simDate.addEventListener('input', () => {
+                const t = new Date(simDate.value).getTime();
+                if (!isNaN(t)) {
+                    TARGET = t;
+                    updateTimer();
+                }
+            });
         }
 
         setInterval(updateTimer, 1000);

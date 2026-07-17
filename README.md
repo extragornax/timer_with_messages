@@ -23,6 +23,7 @@ cargo run
 Then open:
 
 - http://localhost:3000 — the timer display
+- http://localhost:3000/simulate — same display with a date field to preview any target date
 - http://localhost:3000/send — form to add a message
 - http://localhost:3000/admin — admin page (list and delete messages)
 

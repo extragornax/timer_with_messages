@@ -56,6 +56,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
+        .route("/simulate", get(simulate))
         .route("/send", get(send_page))
         .route("/admin", get(admin_page))
         .route("/api/messages", get(get_messages))
@@ -71,10 +72,20 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn index() -> Html<String> {
+fn render_index(simulate: bool) -> Html<String> {
     let target = env::var("TARGET_DATE").unwrap_or_else(|_| "2026-07-25T12:00:00Z".to_string());
-    let html = include_str!("index.html").replace("{{TARGET_DATE}}", &target);
+    let html = include_str!("index.html")
+        .replace("{{TARGET_DATE}}", &target)
+        .replace("{{SIMULATE}}", if simulate { "true" } else { "false" });
     Html(html)
+}
+
+async fn index() -> Html<String> {
+    render_index(false)
+}
+
+async fn simulate() -> Html<String> {
+    render_index(true)
 }
 
 async fn send_page() -> impl IntoResponse {
