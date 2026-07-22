@@ -235,9 +235,9 @@
 
         /* --- LED dot-matrix style --- */
         #clock { display: none; }
-        body.style-matrix { background: #000; }
-        body.style-matrix #timer { display: none; }
-        body.style-matrix #clock {
+        body.style-matrix, body.style-matrix-readable { background: #000; }
+        body.style-matrix #timer, body.style-matrix-readable #timer { display: none; }
+        body.style-matrix #clock, body.style-matrix-readable #clock {
             display: block;
             width: 94vw;
             max-height: 60vh;
@@ -249,6 +249,23 @@
             filter: drop-shadow(0 0 3px #ff2200) drop-shadow(0 0 8px #ff0000);
         }
         #clock .off { fill: #1c0503; }
+
+        /* --- LED Matrix (Readable): same dot-matrix clock, higher-contrast
+               message popup so the text is easy to read on pure black. --- */
+        body.style-matrix-readable #message-target {
+            color: #ff6a4d;
+            font-size: 3.6vw;
+        }
+        body.style-matrix-readable #message-text {
+            color: #fff;
+            font-weight: 500;
+            font-size: 6vw;
+            text-shadow: 0 0 12px rgba(255, 90, 50, 0.35);
+        }
+        body.style-matrix-readable #message-author {
+            color: #ff5a3c;
+            font-size: 3vw;
+        }
 
         @keyframes glow {
             0%, 100% {
@@ -313,6 +330,7 @@
         <option value="retro">Retro</option>
         <option value="red">Red on Black</option>
         <option value="matrix">LED Matrix</option>
+        <option value="matrix-readable">LED Matrix (Readable)</option>
     </select>
     <div id="sim-controls">
         <label for="sim-date">Simulated date</label>
@@ -320,7 +338,7 @@
     </div>
 
     <script>
-        const STYLES = ['minimal', 'lcd', 'retro', 'red', 'matrix'];
+        const STYLES = ['minimal', 'lcd', 'retro', 'red', 'matrix', 'matrix-readable'];
         function applyStyle(style) {
             STYLES.forEach(s => document.body.classList.remove('style-' + s));
             if (style !== 'neon') document.body.classList.add('style-' + style);
@@ -470,7 +488,8 @@
                 showDays = false;
             }
 
-            if (document.body.classList.contains('style-matrix')) {
+            if (document.body.classList.contains('style-matrix')
+                || document.body.classList.contains('style-matrix-readable')) {
                 renderMatrix(matrixString(totalSeconds));
             } else {
                 document.getElementById('timer').innerHTML = formatTime(totalSeconds, showDays);
@@ -515,9 +534,9 @@
             // Messages never expire on their own: one stays until the next
             // rotates in, so the display is never blank.
             setTimeout(() => {
-                targetEl.textContent = `#${msg.bib} ${msg.runner_name}`;
+                targetEl.textContent = `To #${msg.bib} ${msg.runner_name}`;
                 textEl.textContent = `”${msg.text}”`;
-                authorEl.textContent = `— ${msg.author}`;
+                authorEl.textContent = `From ${msg.author}`;
                 targetEl.classList.add('visible');
                 textEl.classList.add('visible');
                 authorEl.classList.add('visible');
