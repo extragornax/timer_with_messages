@@ -20,10 +20,16 @@ Adds a message that will appear on the timer display.
 | `bib`         | string | Runner's bib number                  |
 | `runner_name` | string | Runner's name                        |
 | `profile_url` | string | Runner's avatar URL (optional)       |
+| `team_name`   | string | Runner's team (optional)             |
+| `team_emoji`  | string | Emoji shown before the team (optional) |
 
-All fields are required except `profile_url`, which may be omitted or `null`.
-When it is absent the display falls back to the runner's initials on a colour
-derived from their name.
+`author`, `text`, `bib` and `runner_name` are required; the rest may be
+omitted or `null`.
+
+The display shows `<avatar> <runner_name> - <team_emoji> <team_name> (<bib>)`.
+Without `profile_url` the avatar falls back to the runner's initials on a
+colour derived from their name; without `team_name` the team is left out
+entirely, which is what solo entrants get.
 
 ### Example
 
@@ -35,7 +41,9 @@ curl -X POST http://localhost:3000/api/messages \
     "text": "Tu vas y arriver, on est fiers de toi !",
     "bib": "42",
     "runner_name": "Jean",
-    "profile_url": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/1/2/3/large.jpg"
+    "profile_url": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/1/2/3/large.jpg",
+    "team_name": "Trianon",
+    "team_emoji": "🤘"
   }'
 ```
 
@@ -52,6 +60,8 @@ curl -X POST http://localhost:3000/api/messages \
   "bib": "42",
   "runner_name": "Jean",
   "profile_url": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/1/2/3/large.jpg",
+  "team_name": "Trianon",
+  "team_emoji": "🤘",
   "created_at": "2026-07-25T10:15:30.123456+00:00"
 }
 ```

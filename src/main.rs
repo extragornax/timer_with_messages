@@ -23,6 +23,10 @@ struct Message {
     /// sender (the Strava picture from the registration site). Absent when the
     /// runner has no Strava picture; the display falls back to initials.
     profile_url: Option<String>,
+    /// Team the runner rides for. Both are absent for solo entrants, and the
+    /// display then shows just the runner and their bib.
+    team_name: Option<String>,
+    team_emoji: Option<String>,
     created_at: DateTime<Utc>,
 }
 
@@ -34,6 +38,10 @@ struct NewMessage {
     runner_name: String,
     #[serde(default)]
     profile_url: Option<String>,
+    #[serde(default)]
+    team_name: Option<String>,
+    #[serde(default)]
+    team_emoji: Option<String>,
 }
 
 type Db = Arc<Mutex<Connection>>;
@@ -47,21 +55,28 @@ fn init_db(conn: &Connection) {
             bib TEXT NOT NULL,
             runner_name TEXT NOT NULL,
             profile_url TEXT,
+            team_name TEXT,
+            team_emoji TEXT,
             created_at TEXT NOT NULL
         )",
     )
     .unwrap();
 
-    // Databases created before profile_url existed keep their old schema, so
-    // add the column in place rather than losing the messages already stored.
-    let has_profile_url = conn
-        .prepare("SELECT 1 FROM pragma_table_info('messages') WHERE name = 'profile_url'")
-        .unwrap()
-        .exists([])
-        .unwrap();
-    if !has_profile_url {
-        conn.execute("ALTER TABLE messages ADD COLUMN profile_url TEXT", [])
+    // Databases created before these columns existed keep their old schema, so
+    // add them in place rather than losing the messages already stored.
+    for column in ["profile_url", "team_name", "team_emoji"] {
+        let exists = conn
+            .prepare("SELECT 1 FROM pragma_table_info('messages') WHERE name = ?1")
+            .unwrap()
+            .exists([column])
             .unwrap();
+        if !exists {
+            conn.execute(
+                &format!("ALTER TABLE messages ADD COLUMN {column} TEXT"),
+                [],
+            )
+            .unwrap();
+        }
     }
 }
 
@@ -119,13 +134,14 @@ async fn get_messages(State(db): State<Db>) -> Json<Vec<Message>> {
     let conn = db.lock().unwrap();
     let mut stmt = conn
         .prepare(
-            "SELECT id, author, text, bib, runner_name, profile_url, created_at
+            "SELECT id, author, text, bib, runner_name, profile_url, team_name, team_emoji,
+                    created_at
              FROM messages ORDER BY id",
         )
         .unwrap();
     let messages = stmt
         .query_map([], |row| {
-            let created_at_str: String = row.get(6)?;
+            let created_at_str: String = row.get(8)?;
             Ok(Message {
                 id: row.get(0)?,
                 author: row.get(1)?,
@@ -133,6 +149,8 @@ async fn get_messages(State(db): State<Db>) -> Json<Vec<Message>> {
                 bib: row.get(3)?,
                 runner_name: row.get(4)?,
                 profile_url: row.get(5)?,
+                team_name: row.get(6)?,
+                team_emoji: row.get(7)?,
                 created_at: created_at_str.parse::<DateTime<Utc>>().unwrap(),
             })
         })
@@ -146,14 +164,17 @@ async fn post_message(State(db): State<Db>, Json(payload): Json<NewMessage>) -> 
     let now = Utc::now();
     let conn = db.lock().unwrap();
     conn.execute(
-        "INSERT INTO messages (author, text, bib, runner_name, profile_url, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO messages
+             (author, text, bib, runner_name, profile_url, team_name, team_emoji, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         (
             &payload.author,
             &payload.text,
             &payload.bib,
             &payload.runner_name,
             &payload.profile_url,
+            &payload.team_name,
+            &payload.team_emoji,
             &now.to_rfc3339(),
         ),
     )
@@ -165,6 +186,8 @@ async fn post_message(State(db): State<Db>, Json(payload): Json<NewMessage>) -> 
         bib: payload.bib,
         runner_name: payload.runner_name,
         profile_url: payload.profile_url,
+        team_name: payload.team_name,
+        team_emoji: payload.team_emoji,
         created_at: now,
     })
 }

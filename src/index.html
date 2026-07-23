@@ -605,7 +605,7 @@
             // rotates in, so the display is never blank.
             setTimeout(() => {
                 renderAvatar(msg);
-                targetEl.textContent = `To #${msg.bib} ${msg.runner_name}`;
+                targetEl.textContent = targetLine(msg);
                 textEl.textContent = `”${msg.text}”`;
                 authorEl.textContent = `From ${msg.author}`;
                 fitMessage();
@@ -654,6 +654,17 @@
         function getInitialsColor(name) {
             const index = Math.abs(hashCode(name)) % AVATAR_COLOR_NAMES.length;
             return AVATAR_COLORS[AVATAR_COLOR_NAMES[index]];
+        }
+
+        // "Marion Boulan - 🤘 Trianon (402)". Solo entrants carry no team, so
+        // they get just their name and bib.
+        function targetLine(msg) {
+            let line = msg.runner_name;
+            if (msg.team_name) {
+                const team = [msg.team_emoji, msg.team_name].filter(Boolean).join(' ');
+                line += ` - ${team}`;
+            }
+            return `${line} (${msg.bib})`;
         }
 
         function renderAvatar(msg) {
