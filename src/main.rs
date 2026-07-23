@@ -19,6 +19,14 @@ struct Message {
     text: String,
     bib: String,
     runner_name: String,
+    /// Avatar of the runner the message is addressed to, supplied by the
+    /// sender (the Strava picture from the registration site). Absent when the
+    /// runner has no Strava picture; the display falls back to initials.
+    profile_url: Option<String>,
+    /// Team the runner rides for. Both are absent for solo entrants, and the
+    /// display then shows just the runner and their bib.
+    team_name: Option<String>,
+    team_emoji: Option<String>,
     created_at: DateTime<Utc>,
 }
 
@@ -28,6 +36,12 @@ struct NewMessage {
     text: String,
     bib: String,
     runner_name: String,
+    #[serde(default)]
+    profile_url: Option<String>,
+    #[serde(default)]
+    team_name: Option<String>,
+    #[serde(default)]
+    team_emoji: Option<String>,
 }
 
 type Db = Arc<Mutex<Connection>>;
@@ -40,10 +54,30 @@ fn init_db(conn: &Connection) {
             text TEXT NOT NULL,
             bib TEXT NOT NULL,
             runner_name TEXT NOT NULL,
+            profile_url TEXT,
+            team_name TEXT,
+            team_emoji TEXT,
             created_at TEXT NOT NULL
         )",
     )
     .unwrap();
+
+    // Databases created before these columns existed keep their old schema, so
+    // add them in place rather than losing the messages already stored.
+    for column in ["profile_url", "team_name", "team_emoji"] {
+        let exists = conn
+            .prepare("SELECT 1 FROM pragma_table_info('messages') WHERE name = ?1")
+            .unwrap()
+            .exists([column])
+            .unwrap();
+        if !exists {
+            conn.execute(
+                &format!("ALTER TABLE messages ADD COLUMN {column} TEXT"),
+                [],
+            )
+            .unwrap();
+        }
+    }
 }
 
 #[tokio::main]
@@ -64,7 +98,8 @@ async fn main() {
         .route("/api/messages/{id}", delete(delete_message))
         .with_state(db);
 
-    let addr = "0.0.0.0:3000";
+    let port = env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let addr = format!("0.0.0.0:{port}");
     println!("Timer running at http://{addr}");
     println!("Send messages at http://{addr}/send");
 
@@ -98,17 +133,24 @@ async fn send_page() -> impl IntoResponse {
 async fn get_messages(State(db): State<Db>) -> Json<Vec<Message>> {
     let conn = db.lock().unwrap();
     let mut stmt = conn
-        .prepare("SELECT id, author, text, bib, runner_name, created_at FROM messages ORDER BY id")
+        .prepare(
+            "SELECT id, author, text, bib, runner_name, profile_url, team_name, team_emoji,
+                    created_at
+             FROM messages ORDER BY id",
+        )
         .unwrap();
     let messages = stmt
         .query_map([], |row| {
-            let created_at_str: String = row.get(5)?;
+            let created_at_str: String = row.get(8)?;
             Ok(Message {
                 id: row.get(0)?,
                 author: row.get(1)?,
                 text: row.get(2)?,
                 bib: row.get(3)?,
                 runner_name: row.get(4)?,
+                profile_url: row.get(5)?,
+                team_name: row.get(6)?,
+                team_emoji: row.get(7)?,
                 created_at: created_at_str.parse::<DateTime<Utc>>().unwrap(),
             })
         })
@@ -122,8 +164,19 @@ async fn post_message(State(db): State<Db>, Json(payload): Json<NewMessage>) -> 
     let now = Utc::now();
     let conn = db.lock().unwrap();
     conn.execute(
-        "INSERT INTO messages (author, text, bib, runner_name, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        (&payload.author, &payload.text, &payload.bib, &payload.runner_name, &now.to_rfc3339()),
+        "INSERT INTO messages
+             (author, text, bib, runner_name, profile_url, team_name, team_emoji, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        (
+            &payload.author,
+            &payload.text,
+            &payload.bib,
+            &payload.runner_name,
+            &payload.profile_url,
+            &payload.team_name,
+            &payload.team_emoji,
+            &now.to_rfc3339(),
+        ),
     )
     .unwrap();
     Json(Message {
@@ -132,6 +185,9 @@ async fn post_message(State(db): State<Db>, Json(payload): Json<NewMessage>) -> 
         text: payload.text,
         bib: payload.bib,
         runner_name: payload.runner_name,
+        profile_url: payload.profile_url,
+        team_name: payload.team_name,
+        team_emoji: payload.team_emoji,
         created_at: now,
     })
 }
