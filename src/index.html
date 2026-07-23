@@ -42,15 +42,21 @@
             pointer-events: none;
         }
 
-        /* Messages sit in the lower part, below the centered clock. */
+        /* Messages sit in the lower part, below the centered clock. The band
+           is bounded top and bottom so a long message can never grow upward
+           into the digits; fitMessage() moves `top` to just under the clock
+           and shrinks the text until it fits. */
         #message-layer {
             position: fixed;
             left: 0;
             right: 0;
+            top: 58vh;
             bottom: 5vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
 
         /* Simulate-mode date field (shown only on /simulate). */
@@ -116,11 +122,53 @@
         #message-box {
             text-align: center;
             max-width: 92vw;
-            min-height: 12vh;
+            max-height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+        }
+
+        /* Avatar sits on the same row as the "To #42 Name" line, so it costs
+           no extra height in the band under the clock. */
+        #message-head {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.2vw;
+            margin-bottom: 1vh;
+        }
+
+        /* Sized in `em` so that scaling its font-size in fitMessage() scales
+           the whole circle along with the text beside it. */
+        #message-avatar {
+            font-size: 1.9vw;
+            width: 2.6em;
+            height: 2.6em;
+            border-radius: 50%;
+            overflow: hidden;
+            flex: none;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            opacity: 0;
+            transform: translateY(15px);
+            transition: opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
+                        transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        #message-avatar.on { display: flex; }
+
+        #message-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Orange ring as on the event site, thickened so it still reads
+               from a distance on the big screen. */
+            border: 0.16em solid #fc6014;
+            border-radius: 50%;
         }
 
         #message-target {
@@ -128,7 +176,6 @@
             font-weight: 400;
             font-size: 3vw;
             color: rgba(217, 90, 60, 0.6);
-            margin-bottom: 1vh;
             opacity: 0;
             transform: translateY(15px);
             transition: opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
@@ -317,7 +364,10 @@
     </div>
     <div id="message-layer">
         <div id="message-box">
-            <div id="message-target"></div>
+            <div id="message-head">
+                <div id="message-avatar"></div>
+                <div id="message-target"></div>
+            </div>
             <div id="message-text"></div>
             <div id="message-author"></div>
         </div>
@@ -360,6 +410,8 @@
             history.replaceState(null, '', location.pathname + '?' + params.toString());
             applyStyle(v);
             if (typeof updateTimer === 'function') updateTimer();
+            // Styles change both the clock size and the message font sizes.
+            if (typeof fitMessage === 'function') fitMessage();
         });
     </script>
 
@@ -495,6 +547,22 @@
                 document.getElementById('timer').innerHTML = formatTime(totalSeconds, showDays);
                 fitTimer();
             }
+
+            // The clock changes height when the digit count does (days
+            // appearing/disappearing), so re-park the message band under it.
+            const bottom = Math.round(clockBottom());
+            if (bottom !== lastClockBottom) {
+                lastClockBottom = bottom;
+                if (typeof fitMessage === 'function') fitMessage();
+            }
+        }
+
+        let lastClockBottom = -1;
+        function clockBottom() {
+            const svg = document.getElementById('clock');
+            const el = svg.getBoundingClientRect().height > 0
+                ? svg : document.getElementById('timer');
+            return el.getBoundingClientRect().bottom;
         }
 
         let messages = [];
@@ -522,10 +590,12 @@
             shownIds.add(idx);
             const msg = messages[idx];
 
+            const avatarEl = document.getElementById('message-avatar');
             const targetEl = document.getElementById('message-target');
             const textEl = document.getElementById('message-text');
             const authorEl = document.getElementById('message-author');
 
+            avatarEl.classList.remove('visible');
             targetEl.classList.remove('visible');
             textEl.classList.remove('visible');
             authorEl.classList.remove('visible');
@@ -534,14 +604,122 @@
             // Messages never expire on their own: one stays until the next
             // rotates in, so the display is never blank.
             setTimeout(() => {
+                renderAvatar(msg);
                 targetEl.textContent = `To #${msg.bib} ${msg.runner_name}`;
                 textEl.textContent = `”${msg.text}”`;
                 authorEl.textContent = `From ${msg.author}`;
+                fitMessage();
+                avatarEl.classList.add('visible');
                 targetEl.classList.add('visible');
                 textEl.classList.add('visible');
                 authorEl.classList.add('visible');
             }, 1200);
         }
+
+        // --- Avatar, following Mantine's <Avatar color="initials"> convention
+        //     so a runner looks the same here as on the event site. The colour
+        //     is derived from the name, not random, so it is stable per person.
+        //     Ported from @mantine/core 8.3.10 get-initials / get-initials-color.
+        const AVATAR_COLORS = {
+            blue:   { fg: '#74c0fc', bg: '#228be6' },
+            cyan:   { fg: '#66d9e8', bg: '#15aabf' },
+            grape:  { fg: '#e599f7', bg: '#be4bdb' },
+            green:  { fg: '#8ce99a', bg: '#40c057' },
+            indigo: { fg: '#91a7ff', bg: '#4c6ef5' },
+            lime:   { fg: '#c0eb75', bg: '#82c91e' },
+            orange: { fg: '#ffc078', bg: '#fd7e14' },
+            pink:   { fg: '#faa2c1', bg: '#e64980' },
+            red:    { fg: '#ffa8a8', bg: '#fa5252' },
+            teal:   { fg: '#63e6be', bg: '#12b886' },
+            violet: { fg: '#b197fc', bg: '#7950f2' },
+        };
+        const AVATAR_COLOR_NAMES = Object.keys(AVATAR_COLORS);
+
+        function getInitials(name, limit = 2) {
+            const splitted = name.split(' ');
+            if (splitted.length === 1) return name.slice(0, limit).toUpperCase();
+            return splitted.map(w => w[0]).slice(0, limit).join('').toUpperCase();
+        }
+
+        function hashCode(input) {
+            let hash = 0;
+            for (let i = 0; i < input.length; i += 1) {
+                const char = input.charCodeAt(i);
+                hash = (hash << 5) - hash + char;
+                hash |= 0;
+            }
+            return hash;
+        }
+
+        function getInitialsColor(name) {
+            const index = Math.abs(hashCode(name)) % AVATAR_COLOR_NAMES.length;
+            return AVATAR_COLORS[AVATAR_COLOR_NAMES[index]];
+        }
+
+        function renderAvatar(msg) {
+            const el = document.getElementById('message-avatar');
+            el.classList.add('on');
+            el.style.background = '';
+            el.style.color = '';
+
+            if (msg.profile_url) {
+                const img = new Image();
+                img.src = msg.profile_url;
+                img.alt = '';
+                // A dead Strava URL must not leave an empty circle on screen.
+                img.onerror = () => showInitials(el, msg.runner_name);
+                el.replaceChildren(img);
+                return;
+            }
+            showInitials(el, msg.runner_name);
+        }
+
+        function showInitials(el, name) {
+            const { fg, bg } = getInitialsColor(name);
+            // Mantine's "light" variant: tinted wash behind a bright glyph,
+            // which stays legible on the display's black background.
+            el.style.background = bg + '33';
+            el.style.color = fg;
+            el.textContent = getInitials(name);
+        }
+
+        // Keep the message inside the band under the clock: park the band just
+        // below whichever clock is visible, then shrink the message text until
+        // it fits. Without this, a long message wraps and grows up over the
+        // digits.
+        function fitMessage() {
+            const layer = document.getElementById('message-layer');
+            const box = document.getElementById('message-box');
+            const parts = ['message-avatar', 'message-target', 'message-text', 'message-author']
+                .map(id => document.getElementById(id));
+
+            // The dot-matrix styles swap #timer for the #clock SVG.
+            const svg = document.getElementById('clock');
+            const clockEl = svg.getBoundingClientRect().height > 0
+                ? svg : document.getElementById('timer');
+
+            // Start from each style's natural sizes so the text can grow back
+            // when a short message follows a long one.
+            parts.forEach(el => { el.style.fontSize = ''; });
+            const bases = parts.map(el => parseFloat(getComputedStyle(el).fontSize));
+
+            const gap = window.innerHeight * 0.03;
+            const top = clockEl.getBoundingClientRect().bottom + gap;
+            // Never let the band collapse to nothing on short viewports.
+            const maxTop = window.innerHeight * 0.8;
+            layer.style.top = Math.min(top, maxTop) + 'px';
+
+            // Scale all three lines by one factor, so the target and author
+            // lines shrink with the message instead of being clipped off.
+            const avail = layer.clientHeight;
+            let scale = 1;
+            while (box.scrollHeight > avail && scale > 0.3) {
+                scale -= 0.05;
+                parts.forEach((el, i) => { el.style.fontSize = bases[i] * scale + 'px'; });
+            }
+        }
+
+        window.addEventListener('resize', fitMessage);
 
         // Simulate mode: reveal the date field and let it override TARGET.
         if (SIMULATE) {

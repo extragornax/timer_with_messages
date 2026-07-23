@@ -19,8 +19,11 @@ Adds a message that will appear on the timer display.
 | `text`        | string | The message content                  |
 | `bib`         | string | Runner's bib number                  |
 | `runner_name` | string | Runner's name                        |
+| `profile_url` | string | Runner's avatar URL (optional)       |
 
-All fields are required.
+All fields are required except `profile_url`, which may be omitted or `null`.
+When it is absent the display falls back to the runner's initials on a colour
+derived from their name.
 
 ### Example
 
@@ -31,7 +34,8 @@ curl -X POST http://localhost:3000/api/messages \
     "author": "Maman",
     "text": "Tu vas y arriver, on est fiers de toi !",
     "bib": "42",
-    "runner_name": "Jean"
+    "runner_name": "Jean",
+    "profile_url": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/1/2/3/large.jpg"
   }'
 ```
 
@@ -47,6 +51,7 @@ curl -X POST http://localhost:3000/api/messages \
   "text": "Tu vas y arriver, on est fiers de toi !",
   "bib": "42",
   "runner_name": "Jean",
+  "profile_url": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/1/2/3/large.jpg",
   "created_at": "2026-07-25T10:15:30.123456+00:00"
 }
 ```
